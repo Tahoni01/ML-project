@@ -1,76 +1,59 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader
+from preprocess import load_all_monks
+from models.nn_pytorch import train_pytorch_nn, evaluate_pytorch_nn
+#from models.nn_jax import JaxNN          # Modulo JAX (da implementare)
 
-# 1. Preprocessing e Caricamento Dataset
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize((0.5,), (0.5,))  # Normalizzazione su media=0.5, std=0.5
-])
+def main():
+    # Percorso alla directory Monk's
+    monks_path = "data/monk"
 
-train_dataset = datasets.MNIST(root="./data", train=True, transform=transform, download=True)
-test_dataset = datasets.MNIST(root="./data", train=False, transform=transform, download=True)
+    print("Caricando tutti i dataset Monk's...")
+    datasets = load_all_monks(monks_path)
 
-train_loader = DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
-test_loader = DataLoader(dataset=test_dataset, batch_size=64, shuffle=False)
+    for monk, data in datasets.items():
+        print(f"{monk}:")
+        print(f" - Training set: {data['X_train'].shape}, Target: {data['y_train'].shape}")
+        print(f" - Test set: {data['X_test'].shape}, Target: {data['y_test'].shape}")
 
-# 2. Definizione del Modello
-class SimpleNN(nn.Module):
-    def __init__(self):
-        super(SimpleNN, self).__init__()
-        self.fc1 = nn.Linear(28 * 28, 128)  # Input: 28x28 immagini, 128 neuroni
-        self.relu = nn.ReLU()
-        self.fc2 = nn.Linear(128, 10)  # Output: 10 classi
+    print("\nTutti i dataset Monk's sono stati caricati con successo!")
 
-    def forward(self, x):
-        x = x.view(-1, 28 * 28)  # Flatten dell'immagine
-        x = self.fc1(x)
-        x = self.relu(x)
-        x = self.fc2(x)
-        return x
+    # Configurazione del modello
+    hidden_size = 10  # Numero di neuroni nello strato nascosto
+    epochs = 50  # Numero di epoche
+    batch_size = 32  # Dimensione del batch
+    lr = 0.001  # Learning rate
 
-model = SimpleNN()
+    results = []
 
-# 3. Funzione di Perdita e Ottimizzatore
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.001)
+    # Addestra e valuta il modello per ciascun dataset
+    for monk, data in datasets.items():
+        print(f"\n--- Dataset {monk} ---")
+        X_train, y_train = data["X_train"], data["y_train"]
+        X_test, y_test = data["X_test"], data["y_test"]
 
-# 4. Training
-def train(model, train_loader, criterion, optimizer, epochs=5):
-    model.train()
-    for epoch in range(epochs):
-        running_loss = 0.0
-        for images, labels in train_loader:
-            # Forward Pass
-            outputs = model(images)
-            loss = criterion(outputs, labels)
+        print(f"Training set: {X_train.shape}, Test set: {X_test.shape}")
 
-            # Backward Pass e Aggiornamento Pesi
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        # Addestramento del modello
+        print(f"Addestramento del modello per {monk}...")
+        model = train_pytorch_nn(
+            X_train, y_train,
+            input_size=X_train.shape[1],
+            hidden_size=hidden_size,
+            epochs=epochs,
+            batch_size=batch_size,
+            lr=lr
+        )
 
-            running_loss += loss.item()
+        # Valutazione del modello
+        print(f"Valutazione del modello per {monk}...")
+        accuracy = evaluate_pytorch_nn(model, X_test, y_test)
+        results.append((monk, accuracy))
 
-        print(f"Epoch {epoch+1}/{epochs}, Loss: {running_loss/len(train_loader):.4f}")
+    # Riassunto dei risultati
+    print("\n--- Risultati Finali ---")
+    for monk, accuracy in results:
+        print(f"{monk}: Accuracy = {accuracy * 100:.2f}%")
 
-# 5. Valutazione
-def evaluate(model, test_loader):
-    model.eval()
-    correct = 0
-    total = 0
-    with torch.no_grad():
-        for images, labels in test_loader:
-            outputs = model(images)
-            _, predicted = torch.max(outputs, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
 
-    accuracy = 100 * correct / total
-    print(f"Accuracy: {accuracy:.2f}%")
+if __name__ == "__main__":
+    main()
 
-# 6. Esecuzione
-train(model, train_loader, criterion, optimizer, epochs=5)
-evaluate(model, test_loader)
