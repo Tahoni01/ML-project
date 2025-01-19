@@ -1,8 +1,8 @@
 import jax
 import jax.numpy as jnp
+import numpy as np
 from jax import grad, jit
 from sklearn.model_selection import KFold
-from sklearn.metrics import accuracy_score
 
 
 # Definizione del modello
