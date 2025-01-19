@@ -1,31 +1,3 @@
-"""
-from preprocess import load_all_monks,load_monk_dataset
-#from models.nn_pytorch import train_pytorch_nn, evaluate_pytorch_nn
-
-
-def main():
-    monk_train = "data/monk/monks-1.train"
-    monk_test = "data/monk/monks-1.test"
-
-    X_train, y_train, encoder = load_monk_dataset(monk_train)
-    X_test, y_test, _ = load_monk_dataset(monk_test, encoder=encoder)
-
-    input_size = X_train.shape[1]  # Numero di feature preprocessate
-    hidden_size = 20  # Numero di neuroni nello strato nascosto
-    epochs = 100  # Numero di epoche
-    batch_size = 32  # Dimensione del batch
-    lr = 0.001  # Learning rate
-
-    model = train_pytorch_nn(X_train, y_train, input_size, hidden_size, epochs, batch_size, lr)
-
-    evaluate_pytorch_nn(model, X_test, y_test)
-
-
-if __name__ == "__main__":
-    main()
-
-"""
-
 from preprocess import load_all_monks
 from models.nn_pytorch import k_fold_cross_validation
 
