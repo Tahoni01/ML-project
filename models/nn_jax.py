@@ -1,84 +1,106 @@
 import jax
 import jax.numpy as jnp
-from flax import linen as nn
-from flax.training import train_state
-import optax
-from tensorflow.keras.datasets import mnist
-from sklearn.preprocessing import StandardScaler
-import numpy as np
+from jax import grad, jit
+from sklearn.model_selection import KFold
+from sklearn.metrics import accuracy_score
 
-# 1. Dataset e Preprocessing
-def load_and_preprocess_data():
-    (x_train, y_train), (x_test, y_test) = mnist.load_data()
-    x_train = x_train.astype(jnp.float32) / 255.0  # Normalizzazione [0, 1]
-    x_test = x_test.astype(jnp.float32) / 255.0
-    x_train = x_train.reshape(-1, 28 * 28)  # Flatten 28x28 immagini
-    x_test = x_test.reshape(-1, 28 * 28)
-    return x_train, y_train, x_test, y_test
 
-x_train, y_train, x_test, y_test = load_and_preprocess_data()
+# Definizione del modello
+def initialize_params(input_size, hidden_size, output_size):
+    """
+    Inizializza i pesi e i bias del modello.
+    """
+    key = jax.random.PRNGKey(0)
+    w1 = jax.random.normal(key, shape=(input_size, hidden_size))
+    b1 = jnp.zeros(hidden_size)
+    w2 = jax.random.normal(key, shape=(hidden_size, output_size))
+    b2 = jnp.zeros(output_size)
+    return {"w1": w1, "b1": b1, "w2": w2, "b2": b2}
 
-# 2. Definizione del Modello
-class SimpleNN(nn.Module):
-    @nn.compact
-    def __call__(self, x):
-        x = nn.Dense(128)(x)  # Strato denso con 128 neuroni
-        x = nn.relu(x)        # Funzione di attivazione ReLU
-        x = nn.Dense(10)(x)   # Strato denso con 10 output (classi)
-        return x
 
-# 3. Inizializzazione dello Stato
-def create_train_state(rng, model, learning_rate):
-    params = model.init(rng, jnp.ones([1, 28 * 28]))["params"]
-    optimizer = optax.adam(learning_rate)
-    return train_state.TrainState.create(apply_fn=model.apply, params=params, tx=optimizer)
+def forward(params, x):
+    """
+    Propagazione in avanti.
+    """
+    z1 = jnp.dot(x, params["w1"]) + params["b1"]
+    h1 = jax.nn.relu(z1)
+    z2 = jnp.dot(h1, params["w2"]) + params["b2"]
+    return jax.nn.sigmoid(z2)
 
-# 4. Funzione di Perdita
-@jax.jit
-def compute_loss(params, apply_fn, x, y):
-    logits = apply_fn({"params": params}, x)  # Calcolo dei logits
-    one_hot = jax.nn.one_hot(y, num_classes=10)
-    loss = optax.softmax_cross_entropy(logits, one_hot).mean()
-    return loss
 
-# 5. Passo di Aggiornamento
-@jax.jit
-def train_step(state, x, y):
-    def loss_fn(params):
-        return compute_loss(params, state.apply_fn, x, y)
-    grad_fn = jax.value_and_grad(loss_fn)
-    loss, grads = grad_fn(state.params)
-    state = state.apply_gradients(grads=grads)
-    return state, loss
+def binary_cross_entropy_loss(params, x, y):
+    """
+    Calcola la perdita Binary Cross-Entropy.
+    """
+    preds = forward(params, x)
+    preds = jnp.clip(preds, 1e-7, 1 - 1e-7)  # Evita problemi numerici
+    return -jnp.mean(y * jnp.log(preds) + (1 - y) * jnp.log(1 - preds))
 
-# 6. Funzione di Training
-def train_model(state, x_train, y_train, batch_size, epochs):
-    num_batches = len(x_train) // batch_size
+
+def accuracy(params, x, y):
+    """
+    Calcola l'accuratezza.
+    """
+    preds = forward(params, x)
+    return jnp.mean((preds >= 0.5) == y)
+
+
+# Funzione per addestrare su un singolo fold
+def train_single_fold(X_train, y_train, X_val, y_val, input_size, hidden_size, epochs=50, lr=0.001):
+    """
+    Addestra il modello JAX su un singolo fold.
+    """
+    params = initialize_params(input_size, hidden_size, 1)
+    grad_loss = grad(binary_cross_entropy_loss)  # Calcola il gradiente della perdita
+    history = {"train_loss": [], "val_loss": [], "train_accuracy": [], "val_accuracy": []}
+
     for epoch in range(epochs):
-        perm = np.random.permutation(len(x_train))
-        x_train, y_train = x_train[perm], y_train[perm]
-        epoch_loss = 0
-        for i in range(num_batches):
-            batch_x = x_train[i * batch_size:(i + 1) * batch_size]
-            batch_y = y_train[i * batch_size:(i + 1) * batch_size]
-            state, loss = train_step(state, batch_x, batch_y)
-            epoch_loss += loss
-        print(f"Epoch {epoch + 1}, Loss: {epoch_loss / num_batches:.4f}")
-    return state
+        grads = grad_loss(params, X_train, y_train)
+        # Aggiorna i pesi con gradient descent
+        params = jax.tree_map(lambda p, g: p - lr * g, params, grads)
 
-# 7. Valutazione
-@jax.jit
-def evaluate(state, x_test, y_test):
-    logits = state.apply_fn({"params": state.params}, x_test)
-    predictions = jnp.argmax(logits, axis=1)
-    accuracy = jnp.mean(predictions == y_test)
-    return accuracy
+        # Calcola la perdita e l'accuratezza per training e validation
+        train_loss = binary_cross_entropy_loss(params, X_train, y_train)
+        train_acc = accuracy(params, X_train, y_train)
+        val_loss = binary_cross_entropy_loss(params, X_val, y_val)
+        val_acc = accuracy(params, X_val, y_val)
 
-# 8. Esecuzione
-rng = jax.random.PRNGKey(0)
-model = SimpleNN()
-state = create_train_state(rng, model, learning_rate=0.001)
+        # Salva i risultati
+        history["train_loss"].append(train_loss)
+        history["train_accuracy"].append(train_acc)
+        history["val_loss"].append(val_loss)
+        history["val_accuracy"].append(val_acc)
 
-state = train_model(state, x_train, y_train, batch_size=64, epochs=5)
-accuracy = evaluate(state, x_test, y_test)
-print(f"Accuracy: {accuracy * 100:.2f}%")
+    return params, history
+
+
+# Funzione per K-Fold Cross-Validation
+def k_fold_cross_validation(X, y, input_size, hidden_size, k=5, epochs=50, lr=0.001):
+    """
+    Esegue la K-Fold Cross-Validation utilizzando JAX.
+    """
+    kf = KFold(n_splits=k, shuffle=True, random_state=42)
+    fold_histories = []
+
+    for fold, (train_index, val_index) in enumerate(kf.split(X)):
+        print(f"\n--- Fold {fold + 1}/{k} ---")
+        X_train, X_val = X[train_index], X[val_index]
+        y_train, y_val = y[train_index], y[val_index]
+
+        _, history = train_single_fold(
+            X_train, y_train, X_val, y_val, input_size, hidden_size, epochs, lr
+        )
+        fold_histories.append(history)
+
+    # Converti le metriche finali in array JAX
+    val_accuracies = jnp.array([history["val_accuracy"][-1] for history in fold_histories])
+    val_losses = jnp.array([history["val_loss"][-1] for history in fold_histories])
+
+    # Calcola metriche medie
+    avg_metrics = {
+        "accuracy": jnp.mean(val_accuracies),
+        "loss": jnp.mean(val_losses),
+    }
+
+    return fold_histories, avg_metrics
+
