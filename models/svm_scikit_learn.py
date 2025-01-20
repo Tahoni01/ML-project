@@ -41,34 +41,54 @@ def train_single_fold(X_train, y_train, X_val, y_val, kernel='linear', C=1.0):
 
 def k_fold_cross_validation(X, y, kernel='linear', C=1.0, k=5):
     """
-    Esegue la K-Fold Cross-Validation per SVM.
-
-    Args:
-        X (np.ndarray): Dati di input.
-        y (np.ndarray): Target binari.
-        kernel (str): Tipo di kernel per SVM.
-        C (float): Parametro di regolarizzazione.
-        k (int): Numero di fold.
+    Esegue una K-Fold Cross-Validation e raccoglie i dati per la curva di apprendimento.
 
     Returns:
-        list: Lista delle metriche per ogni fold.
+        fold_histories: Storico delle perdite per ogni fold.
+        overall_history: Risultati medi sui fold.
+        learning_data: Dati per il grafico di apprendimento.
     """
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    fold_metrics = []
+    fold_histories = []
+    train_sizes = []
+    train_loss = []
+    val_loss = []
 
-    for fold, (train_index, val_index) in enumerate(kf.split(X)):
-        print(f"\n--- Fold {fold + 1}/{k} ---")
+    for train_idx, val_idx in kf.split(X):
+        X_train, X_val = X[train_idx], X[val_idx]
+        y_train, y_val = y[train_idx], y[val_idx]
 
-        X_train, X_val = X[train_index], X[val_index]
-        y_train, y_val = y[train_index], y[val_index]
+        # Addestra il modello
+        model = SVC(kernel=kernel, C=C, probability=True)
+        model.fit(X_train, y_train)
 
-        metrics = train_single_fold(X_train, y_train, X_val, y_val, kernel, C)
-        fold_metrics.append(metrics)
+        # Calcola la perdita
+        train_proba = model.predict_proba(X_train)
+        val_proba = model.predict_proba(X_val)
 
-    # Calcola le medie delle metriche su tutti i fold
-    avg_metrics = {
-        metric: np.mean([fold[metric] for fold in fold_metrics])
-        for metric in fold_metrics[0]
+        fold_train_loss = log_loss(y_train, train_proba)
+        fold_val_loss = log_loss(y_val, val_proba)
+
+        fold_histories.append({
+            "train_loss": fold_train_loss,
+            "val_loss": fold_val_loss
+        })
+
+        # Raccogli i dati per la curva di apprendimento
+        train_sizes.append(len(X_train))
+        train_loss.append(fold_train_loss)
+        val_loss.append(fold_val_loss)
+
+    overall_history = {
+        "train_loss": np.mean([h["train_loss"] for h in fold_histories]),
+        "val_loss": np.mean([h["val_loss"] for h in fold_histories]),
     }
 
-    return fold_metrics, avg_metrics
+    learning_data = {
+        "train_sizes": train_sizes,
+        "train_loss": train_loss,
+        "val_loss": val_loss
+    }
+
+    return fold_histories, overall_history, learning_data
+

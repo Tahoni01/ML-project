@@ -1,35 +1,9 @@
-"""
-from preprocess import load_all_monks,load_monk_dataset
-#from models.nn_pytorch import train_pytorch_nn, evaluate_pytorch_nn
-
-
-def main():
-    monk_train = "data/monk/monks-1.train"
-    monk_test = "data/monk/monks-1.test"
-
-    X_train, y_train, encoder = load_monk_dataset(monk_train)
-    X_test, y_test, _ = load_monk_dataset(monk_test, encoder=encoder)
-
-    input_size = X_train.shape[1]  # Numero di feature preprocessate
-    hidden_size = 20  # Numero di neuroni nello strato nascosto
-    epochs = 100  # Numero di epoche
-    batch_size = 32  # Dimensione del batch
-    lr = 0.001  # Learning rate
-
-    model = train_pytorch_nn(X_train, y_train, input_size, hidden_size, epochs, batch_size, lr)
-
-    evaluate_pytorch_nn(model, X_test, y_test)
-
-
-if __name__ == "__main__":
-    main()
-
-"""
-
 from preprocess import load_all_monks
 from models.nn_pytorch import SimpleNN, TwoHiddenLayerNN, DropoutNN, k_fold_cross_validation as pytorch_kfold
 from models.nn_jax import k_fold_cross_validation as jax_kfold
-from utility.plot_manager import plot_overall_history, compute_overall_history
+from models.svm_scikit_learn import k_fold_cross_validation as scikit_kfold
+from models.svm_thunder import k_fold_cross_validation_thunder
+from utility.plot_manager import plot_overall_history, compute_overall_history, plot_learning_curve
 import os
 
 
@@ -84,6 +58,35 @@ def main():
             output_file=f"{result_dir}{monk_name}_JAX_Overall.png"
         )
 
+        # Esegui il test per scikit
+        print("\nModello Scikit")
+        scikit_histories, scikit_overall, scikit_learning_data = scikit_kfold(
+            data["X_train"], data["y_train"], kernel='poly', C=1.0, k=k
+        )
+
+        # Plotta la curva di apprendimento
+        plot_learning_curve(
+            scikit_learning_data["train_sizes"],
+            scikit_learning_data["train_loss"],
+            scikit_learning_data["val_loss"],
+            title=f"Scikit - {monk_name} - Learning Curve",
+            output_file=f"{result_dir}{monk_name}_Scikit_LearningCurve.png"
+        )
+
+        # ThunderSVM
+        print("\nModello Thunder")
+        thunder_histories, thunder_overall, thunder_learning_data = k_fold_cross_validation_thunder(
+            data["X_train"], data["y_train"], k=k, kernel='rbf', C=1.0, gamma='scale'
+        )
+
+        # Plotta la curva di apprendimento per ThunderSVM
+        plot_learning_curve(
+            thunder_learning_data["train_sizes"],
+            thunder_learning_data["train_loss"],
+            thunder_learning_data["val_loss"],
+            title=f"ThunderSVM - {monk_name} - Learning Curve",
+            output_file=f"{result_dir}{monk_name}_Thunder_LearningCurve.png"
+        )
 
 if __name__ == "__main__":
     main()

@@ -54,30 +54,33 @@ def compute_overall_history(fold_histories):
 
 def plot_overall_history(overall_history, title="Overall Metrics", output_file=None):
     """
-    Plotta le metriche medie su tutti i fold.
+    Plotta le metriche medie su tutti i fold. Supporta sia modelli con epoche (es. reti neurali)
+    sia modelli senza epoche (es. SVM).
     """
-    epochs = range(1, len(overall_history["train_loss"]) + 1)
+    if isinstance(overall_history["train_loss"], list):
+        # Modelli con epoche
+        epochs = range(1, len(overall_history["train_loss"]) + 1)
 
-    # Plot della Loss
-    plt.figure(figsize=(12, 6))
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, overall_history["train_loss"], label="Loss TR (Mean)")
-    plt.plot(epochs, overall_history["val_loss"], label="Loss TS (Mean)")
-    plt.title("Loss")
-    plt.xlabel("Epoch")
-    plt.ylabel("Loss")
-    plt.legend()
-    plt.grid(True)
+        # Plot della Loss
+        plt.figure(figsize=(12, 6))
+        plt.subplot(1, 2, 1)
+        plt.plot(epochs, overall_history["train_loss"], label="Loss TR (Mean)")
+        plt.plot(epochs, overall_history["val_loss"], label="Loss TS (Mean)")
+        plt.title("Loss")
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.legend()
+        plt.grid(True)
 
-    # Plot dell'Accuracy
-    plt.subplot(1, 2, 2)
-    plt.plot(epochs, overall_history["train_accuracy"], label="Accuracy TR (Mean)")
-    plt.plot(epochs, overall_history["val_accuracy"], label="Accuracy TS (Mean)")
-    plt.title("Accuracy")
-    plt.xlabel("Epoch")
-    plt.ylabel("Accuracy")
-    plt.legend()
-    plt.grid(True)
+        # Plot dell'Accuracy
+        plt.subplot(1, 2, 2)
+        plt.plot(epochs, overall_history["train_accuracy"], label="Accuracy TR (Mean)")
+        plt.plot(epochs, overall_history["val_accuracy"], label="Accuracy TS (Mean)")
+        plt.title("Accuracy")
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy")
+        plt.legend()
+        plt.grid(True)
 
     plt.suptitle(title)
     plt.tight_layout()
@@ -87,3 +90,31 @@ def plot_overall_history(overall_history, title="Overall Metrics", output_file=N
         print(f"Grafico salvato in: {output_file}")
     else:
         plt.show()
+
+
+def plot_learning_curve(train_sizes, train_loss, val_loss, title="Learning Curve (SVM)", output_file=None):
+    """
+    Plotta la curva di apprendimento per le SVM.
+
+    Args:
+        train_sizes (list): Lista delle dimensioni del set di training.
+        train_loss (list): Lista delle perdite (training).
+        val_loss (list): Lista delle perdite (validazione).
+        title (str): Titolo del grafico.
+        output_file (str): Percorso per salvare il file (opzionale).
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(train_sizes, train_loss, label="Loss TR", color="blue")
+    plt.plot(train_sizes, val_loss, label="Loss VL", color="orange")
+    plt.title(title)
+    plt.xlabel("Train size")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid(True)
+
+    if output_file:
+        plt.savefig(output_file)
+        print(f"Grafico salvato in: {output_file}")
+    else:
+        plt.show()
+
