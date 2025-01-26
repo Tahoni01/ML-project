@@ -1,56 +1,35 @@
 import pandas as pd
 from sklearn.preprocessing import OneHotEncoder
 
-def load_monk_dataset(file_path, encoder=None):
-    """
-    Carica e preprocessa un singolo dataset MONK.
-    Args:
-        file_path (str): Percorso al file.
-        encoder (OneHotEncoder, opzionale): Encoder da riutilizzare.
-    Returns:
-        tuple: (X, y, encoder)
-    """
-    # Colonne del file MONK
-    columns = ["class", "a1", "a2", "a3", "a4", "a5", "a6", "id"]
-    data = pd.read_csv(file_path, sep='\s+', header=None, names=columns)
+def load_monk_data(file_path):
+    # Legge i dati separati da spazi
+    data = pd.read_csv(file_path, sep='\s+', header=None)
 
-    # Separare attributi e target
-    X = data.iloc[:, 1:7].values  # Colonne a1, ..., a6
-    y = data["class"].values      # Colonna class
+    # Separa le feature (prime 6 colonne) e il target (ultima colonna)
+    X_raw = data.iloc[:, 1:-1].values  # Salta 'Id' e 'class'
+    y = data.iloc[:, 0].values  # 'class'
 
-    # One-Hot Encoding degli attributi
-    if encoder is None:
-        encoder = OneHotEncoder(sparse_output=False, handle_unknown='ignore')
-        X_encoded = encoder.fit_transform(X)
-    else:
-        X_encoded = encoder.transform(X)
+    # Codifica le feature categoriche
+    encoder = OneHotEncoder(sparse_output=False)
+    X_encoded = encoder.fit_transform(X_raw)
 
-    return X_encoded, y, encoder
+    return X_encoded, y
+
 
 def load_all_monks(base_path):
-    """
-    Carica tutti i dataset MONK.
-    Args:
-        base_path (str): Directory contenente i file MONK.
-    Returns:
-        dict: Dizionario con i dati di training e utility per ogni MONK.
-    """
     datasets = {}
-    encoder = None  # Encoder condiviso tra training e utility set
-    for i in range(1, 4):  # MONK-1, MONK-2, MONK-3
-        train_file = f"{base_path}/monks-{i}.train"
-        test_file = f"{base_path}/monks-{i}.test"
+    for monk_name in ["monks-1", "monks-2", "monks-3"]:
+        train_path = f"{base_path}/{monk_name}.train"
+        test_path = f"{base_path}/{monk_name}.test"
 
-        # Preprocessing
-        X_train, y_train, encoder = load_monk_dataset(train_file, encoder=encoder)
-        X_test, y_test, _ = load_monk_dataset(test_file, encoder=encoder)
+        X_train, y_train = load_monk_data(train_path)
+        X_test, y_test = load_monk_data(test_path)
 
-        # Memorizza i dati
-        datasets[f"monks-{i}"] = {
+        datasets[monk_name] = {
             "X_train": X_train,
             "y_train": y_train,
             "X_test": X_test,
             "y_test": y_test
         }
-
     return datasets
+

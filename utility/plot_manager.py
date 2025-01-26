@@ -1,120 +1,34 @@
-"""
 import matplotlib.pyplot as plt
-import numpy as np
 
-def plot_results(results, output_file="results_plot.png"):
-    models = list(results.keys())
-    metrics = list(next(iter(results.values())).keys())  # Ottieni le metriche dal primo modello
-    num_metrics = len(metrics)
-
-    # Organizza i dati per il plot
-    data = {metric: [results[model][metric] for model in models] for metric in metrics}
-
-    # Crea un grafico a barre per ogni metrica
-    x = np.arange(len(models))  # Indici per i modelli
-    width = 0.2  # Larghezza delle barre
-
-    fig, ax = plt.subplots(figsize=(12, 6))
-    for i, metric in enumerate(metrics):
-        offset = (i - num_metrics / 2) * width
-        ax.bar(x + offset, data[metric], width, label=metric)
-
-    # Aggiungi etichette e legenda
-    ax.set_xlabel("Modelli")
-    ax.set_ylabel("Valore della Metrica")
-    ax.set_title("Risultati dei Modelli AI sui Dataset MONK")
-    ax.set_xticks(x)
-    ax.set_xticklabels(models, rotation=45, ha="right")
-    ax.legend(title="Metriche")
-    ax.grid(axis="y", linestyle="--", alpha=0.7)
-
-    # Salva il grafico
-    plt.tight_layout()
-    plt.savefig(output_file)
-    print(f"Grafico salvato in: {output_file}")
-
-"""
-
-import matplotlib.pyplot as plt
-import numpy as np
-
-
-def compute_overall_history(fold_histories):
+def plot_training_curves(history, result_dir, file_prefix):
     """
-    Calcola la media delle metriche su tutti i fold.
-    """
-    overall_history = {
-        "train_loss": np.mean([np.array(history["train_loss"]) for history in fold_histories], axis=0).tolist(),
-        "val_loss": np.mean([np.array(history["val_loss"]) for history in fold_histories], axis=0).tolist(),
-        "train_accuracy": np.mean([np.array(history["train_accuracy"]) for history in fold_histories], axis=0).tolist(),
-        "val_accuracy": np.mean([np.array(history["val_accuracy"]) for history in fold_histories], axis=0).tolist(),
-    }
-    return overall_history
-
-
-def plot_overall_history(overall_history, title="Overall Metrics", output_file=None):
-    """
-    Plotta le metriche medie su tutti i fold. Supporta sia modelli con epoche (es. reti neurali)
-    sia modelli senza epoche (es. SVM).
-    """
-    if isinstance(overall_history["train_loss"], list):
-        # Modelli con epoche
-        epochs = range(1, len(overall_history["train_loss"]) + 1)
-
-        # Plot della Loss
-        plt.figure(figsize=(12, 6))
-        plt.subplot(1, 2, 1)
-        plt.plot(epochs, overall_history["train_loss"], label="Loss TR (Mean)")
-        plt.plot(epochs, overall_history["val_loss"], label="Loss TS (Mean)")
-        plt.title("Loss")
-        plt.xlabel("Epoch")
-        plt.ylabel("Loss")
-        plt.legend()
-        plt.grid(True)
-
-        # Plot dell'Accuracy
-        plt.subplot(1, 2, 2)
-        plt.plot(epochs, overall_history["train_accuracy"], label="Accuracy TR (Mean)")
-        plt.plot(epochs, overall_history["val_accuracy"], label="Accuracy TS (Mean)")
-        plt.title("Accuracy")
-        plt.xlabel("Epoch")
-        plt.ylabel("Accuracy")
-        plt.legend()
-        plt.grid(True)
-
-    plt.suptitle(title)
-    plt.tight_layout()
-
-    if output_file:
-        plt.savefig(output_file)
-        print(f"Grafico salvato in: {output_file}")
-    else:
-        plt.show()
-
-
-def plot_learning_curve(train_sizes, train_loss, val_loss, title="Learning Curve (SVM)", output_file=None):
-    """
-    Plotta la curva di apprendimento per le SVM.
+    Plotta le curve di training e validazione per loss e accuracy.
 
     Args:
-        train_sizes (list): Lista delle dimensioni del set di training.
-        train_loss (list): Lista delle perdite (training).
-        val_loss (list): Lista delle perdite (validazione).
-        title (str): Titolo del grafico.
-        output_file (str): Percorso per salvare il file (opzionale).
+        history (dict): Dizionario contenente "train_loss", "val_loss", "train_accuracy", "val_accuracy".
+        result_dir (str): Directory in cui salvare i grafici.
+        file_prefix (str): Prefisso del nome dei file.
     """
-    plt.figure(figsize=(8, 6))
-    plt.plot(train_sizes, train_loss, label="Loss TR", color="blue")
-    plt.plot(train_sizes, val_loss, label="Loss VL", color="orange")
-    plt.title(title)
-    plt.xlabel("Train size")
+    # Plot delle curve di perdita
+    plt.figure()
+    plt.plot(history["train_loss"], label="Train Loss")
+    plt.plot(history["val_loss"], label="Validation Loss", color="orange")
+    plt.xlabel("Epochs")
     plt.ylabel("Loss")
+    plt.title("Loss Curves")
     plt.legend()
     plt.grid(True)
+    plt.savefig(f"{result_dir}/{file_prefix}_loss_curves.png")
+    plt.close()
 
-    if output_file:
-        plt.savefig(output_file)
-        print(f"Grafico salvato in: {output_file}")
-    else:
-        plt.show()
-
+    # Plot delle curve di accuratezza
+    plt.figure()
+    plt.plot(history["train_accuracy"], label="Train Accuracy")
+    plt.plot(history["val_accuracy"], label="Validation Accuracy", color="orange")
+    plt.xlabel("Epochs")
+    plt.ylabel("Accuracy")
+    plt.title("Accuracy Curves")
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(f"{result_dir}/{file_prefix}_accuracy_curves.png")
+    plt.close()

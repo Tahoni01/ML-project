@@ -1,16 +1,46 @@
-from preprocess import load_all_monks
-from models.nn_pytorch import SimpleNN, TwoHiddenLayerNN, DropoutNN, k_fold_cross_validation as pytorch_kfold
+"""
+from preprocess import load_all_monks, load_monk_data
+from models.nn_pytorch import optimize_hyperparameters, final_evaluation
 from models.nn_jax import k_fold_cross_validation as jax_kfold
 from models.svm_scikit_learn import k_fold_cross_validation as scikit_kfold
 from models.svm_thunder import k_fold_cross_validation_thunder
-from utility.plot_manager import plot_overall_history, compute_overall_history, plot_learning_curve
+#from utility.plot_manager import plot_overall_history, compute_overall_history, plot_learning_curve
 import os
+import numpy as np
 
 
 def main():
     print("Caricamento dei dati...")
     base_path = "data/monk/"
     datasets = load_all_monks(base_path)
+    x,y = load_monk_data("data/monk/monks-3.train")
+    z,w = load_monk_data('data/monk/monks-3.test')
+
+    input_size = x.shape[1]
+    output_size = len(np.unique(y))
+
+    # Directory per salvare i risultati
+    result_dir = "results/"
+    os.makedirs(result_dir, exist_ok=True)
+
+    param_bounds = {
+        "hidden_size": (16, 100),
+        "lr": (1e-4, 0.01),
+        "weight_decay": (1e-5, 1e-3),  # Range tipico per weight decay
+    }
+    epochs = 500
+    k = 5
+    device = "cpu"
+
+    model, best_params, best_val_accuracy = optimize_hyperparameters(x, y, input_size, param_bounds, epochs, k, device)
+
+    final_evaluation(model, x, y, z, w, device)
+
+    print(f"Best Parameters: {best_params} with Val Accuracy: {best_val_accuracy:.4f}")
+
+
+
+
 
     # Parametri comuni
     input_size = next(iter(datasets.values()))["X_train"].shape[1]
@@ -19,10 +49,6 @@ def main():
     batch_size = 32
     lr = 0.001
     k = 5  # Numero di fold per la K-Fold Cross-Validation
-
-    # Directory per salvare i risultati
-    result_dir = "results/"
-    os.makedirs(result_dir, exist_ok=True)
 
     # Modelli PyTorch e JAX
     pytorch_models = {
@@ -90,4 +116,68 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
 
+from preprocess import load_all_monks, load_monk_data
+from models.nn_pytorch import optimize_hyperparameters,final_evaluation
+from models.svm_scikit_learn import grid_search_cv_svm
+import os
+import numpy as np
+
+def main():
+    print("Caricamento dei dati...")
+    base_path = "data/monk/"
+    datasets = ["monks-1", "monks-2", "monks-3"]
+
+    # Directory per salvare i risultati
+    result_dir = "results/"
+    os.makedirs(result_dir, exist_ok=True)
+
+
+    # Parametri per le reti neurali
+    nn_param_bounds = {
+        "hidden_size": (16, 100),
+        "lr": (0.005,0.5),
+        "weight_decay": (0.0001, 0.01),
+    }
+    nn_epochs = 500
+    nn_k = 5
+    device = "cpu"
+    """
+    # Parametri per SVM
+    param_grid = {
+        "C": [0.1, 1, 10],
+        "gamma": [0.01, 0.1, 1]
+    }
+    svm_k = 5
+    """
+
+    # Itera su tutti i dataset Monk
+    for dataset in datasets:
+        print(f"\n--- Analisi del dataset {dataset} ---")
+
+        # Carica il training set e il test set
+        train_path = os.path.join(base_path, f"{dataset}.train")
+        test_path = os.path.join(base_path, f"{dataset}.test")
+        x, y = load_monk_data(train_path)
+        z, w = load_monk_data(test_path)
+
+        input_size = x.shape[1]
+
+        # Analisi con reti neurali
+        print(f"-> Ottimizzazione NN per il dataset {dataset}")
+        nn_model, nn_best_params, nn_best_val_accuracy = optimize_hyperparameters(
+            x, y, input_size, nn_param_bounds, nn_epochs, nn_k, device, dataset_name=dataset
+        )
+        final_evaluation(nn_model, x, y, z, w, device, dataset_name=f"{dataset}_NN")
+
+        """
+        # Analisi con SVM
+        print(f"-> Ottimizzazione SVM per il dataset {dataset}")
+        best_params, best_score = grid_search_cv_svm(x, y, param_grid, k=5)
+        """
+
+    print("\nAnalisi completata per tutti i dataset Monk!")
+
+if __name__ == "__main__":
+    main()

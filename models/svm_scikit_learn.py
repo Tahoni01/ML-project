@@ -1,94 +1,147 @@
-from sklearn.svm import SVC
-from sklearn.model_selection import KFold
-from sklearn.metrics import log_loss,accuracy_score
 import numpy as np
+from sklearn.svm import SVC
+from sklearn.model_selection import KFold, GridSearchCV
+from sklearn.metrics import accuracy_score, log_loss
+from sklearn.preprocessing import StandardScaler
+import matplotlib.pyplot as plt
+import os
 
-def train_single_fold(X_train, y_train, X_val, y_val, kernel='linear', C=1.0):
-    """
-    Addestra un modello SVM su un singolo fold.
+# Funzione per l'addestramento del modello SVM
+def train_svm(x_train, y_train, x_val, y_val, kernel, C, gamma):
+    scaler = StandardScaler()
+    x_train_scaled = scaler.fit_transform(x_train)
+    x_val_scaled = scaler.transform(x_val)
 
-    Args:
-        X_train (np.ndarray): Dati di input per il training.
-        y_train (np.ndarray): Target per il training.
-        X_val (np.ndarray): Dati di input per la validazione.
-        y_val (np.ndarray): Target per la validazione.
-        kernel (str): Tipo di kernel per SVM (es. 'linear', 'rbf').
-        C (float): Parametro di regolarizzazione.
+    model = SVC(kernel=kernel, C=C, gamma=gamma, probability=True, random_state=42)
+    model.fit(x_train_scaled, y_train)
 
-    Returns:
-        dict: Metriche di valutazione del modello.
-    """
-    model = SVC(kernel=kernel, C=C, probability=True)
-    model.fit(X_train, y_train)
+    train_probs = model.predict_proba(x_train_scaled)
+    val_probs = model.predict_proba(x_val_scaled)
 
-    # Predizioni su training e validation
-    y_train_pred = model.predict(X_train)
-    y_val_pred = model.predict(X_val)
+    train_preds = model.predict(x_train_scaled)
+    val_preds = model.predict(x_val_scaled)
 
-    # Predizioni probabilistiche per calcolare la log-loss
-    y_train_proba = model.predict_proba(X_train)
-    y_val_proba = model.predict_proba(X_val)
+    train_loss = log_loss(y_train, train_probs)
+    val_loss = log_loss(y_val, val_probs)
 
-    # Calcola metriche
+    train_accuracy = accuracy_score(y_train, train_preds)
+    val_accuracy = accuracy_score(y_val, val_preds)
+
+    train_mse = np.mean((y_train - train_preds) ** 2)
+    val_mse = np.mean((y_val - val_preds) ** 2)
+
+    return model, train_loss, val_loss, train_accuracy, val_accuracy, train_mse, val_mse
+
+# K-Fold Cross-Validation
+def k_fold_cross_validation_svm(x, y, kernel, C, gamma, k):
+    kf = KFold(n_splits=k, shuffle=True, random_state=42)
     metrics = {
-        "train_loss": log_loss(y_train, y_train_proba),
-        "val_loss": log_loss(y_val, y_val_proba),
-        "train_accuracy": accuracy_score(y_train, y_train_pred),
-        "val_accuracy": accuracy_score(y_val, y_val_pred)
+        "train_loss": [],
+        "val_loss": [],
+        "train_accuracy": [],
+        "val_accuracy": [],
+        "train_mse": [],
+        "val_mse": []
     }
 
-    return metrics
-
-def k_fold_cross_validation(X, y, kernel='linear', C=1.0, k=5):
-    """
-    Esegue una K-Fold Cross-Validation e raccoglie i dati per la curva di apprendimento.
-
-    Returns:
-        fold_histories: Storico delle perdite per ogni fold.
-        overall_history: Risultati medi sui fold.
-        learning_data: Dati per il grafico di apprendimento.
-    """
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    fold_histories = []
-    train_sizes = []
-    train_loss = []
-    val_loss = []
-
-    for train_idx, val_idx in kf.split(X):
-        X_train, X_val = X[train_idx], X[val_idx]
+    for train_idx, val_idx in kf.split(x):
+        x_train, x_val = x[train_idx], x[val_idx]
         y_train, y_val = y[train_idx], y[val_idx]
 
-        # Addestra il modello
-        model = SVC(kernel=kernel, C=C, probability=True)
-        model.fit(X_train, y_train)
+        _, train_loss, val_loss, train_accuracy, val_accuracy, train_mse, val_mse = train_svm(
+            x_train, y_train, x_val, y_val, kernel, C, gamma
+        )
 
-        # Calcola la perdita
-        train_proba = model.predict_proba(X_train)
-        val_proba = model.predict_proba(X_val)
+        metrics["train_loss"].append(train_loss)
+        metrics["val_loss"].append(val_loss)
+        metrics["train_accuracy"].append(train_accuracy)
+        metrics["val_accuracy"].append(val_accuracy)
+        metrics["train_mse"].append(train_mse)
+        metrics["val_mse"].append(val_mse)
 
-        fold_train_loss = log_loss(y_train, train_proba)
-        fold_val_loss = log_loss(y_val, val_proba)
+    avg_metrics = {key: np.mean(value) for key, value in metrics.items()}
 
-        fold_histories.append({
-            "train_loss": fold_train_loss,
-            "val_loss": fold_val_loss
-        })
+    return avg_metrics, metrics
 
-        # Raccogli i dati per la curva di apprendimento
-        train_sizes.append(len(X_train))
-        train_loss.append(fold_train_loss)
-        val_loss.append(fold_val_loss)
+# Grid Search con scikit-learn
+def grid_search_cv_svm(x, y, param_grid, k=5):
+    scaler = StandardScaler()
+    x_scaled = scaler.fit_transform(x)
 
-    overall_history = {
-        "train_loss": np.mean([h["train_loss"] for h in fold_histories]),
-        "val_loss": np.mean([h["val_loss"] for h in fold_histories]),
-    }
+    model = SVC(kernel="rbf", probability=True, random_state=42)
 
-    learning_data = {
-        "train_sizes": train_sizes,
-        "train_loss": train_loss,
-        "val_loss": val_loss
-    }
+    grid_search = GridSearchCV(
+        estimator=model,
+        param_grid=param_grid,
+        cv=k,
+        scoring="accuracy",
+        verbose=2,
+        n_jobs=-1
+    )
 
-    return fold_histories, overall_history, learning_data
+    grid_search.fit(x_scaled, y)
 
+    best_params = grid_search.best_params_
+    best_score = grid_search.best_score_
+
+    print(f"Migliori parametri: {best_params}")
+    print(f"Accuratezza migliore: {best_score:.4f}")
+
+    # Plot dei risultati del training
+    results = grid_search.cv_results_
+    plt.figure(figsize=(10, 6))
+    plt.plot(results['param_C'], results['mean_test_score'], marker='o', label='Mean Test Accuracy')
+    plt.xscale('log')
+    plt.xlabel('C (log scale)')
+    plt.ylabel('Mean Test Accuracy')
+    plt.title('Grid Search Results')
+    plt.legend()
+    plt.grid(True)
+
+    # Salva il grafico su file
+    os.makedirs("results", exist_ok=True)
+    plt.savefig("results/grid_search_results.png")
+    plt.close()
+
+    return best_params, best_score
+
+# Plot delle metriche
+def plot_metrics(metrics, result_dir="results", prefix="svm"):
+    os.makedirs(result_dir, exist_ok=True)
+    epochs = range(1, len(metrics["train_loss"]) + 1)
+
+    # Plot delle loss
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, metrics["train_loss"], label="Train Loss")
+    plt.plot(epochs, metrics["val_loss"], label="Validation Loss", linestyle="--")
+    plt.title(f"Loss Curves ({prefix})")
+    plt.xlabel("Iterations")
+    plt.ylabel("Loss")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"{result_dir}/{prefix}_loss_curves.png")
+    plt.close()
+
+    # Plot delle accuracy
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, metrics["train_accuracy"], label="Train Accuracy")
+    plt.plot(epochs, metrics["val_accuracy"], label="Validation Accuracy", linestyle="--")
+    plt.title(f"Accuracy Curves ({prefix})")
+    plt.xlabel("Iterations")
+    plt.ylabel("Accuracy")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"{result_dir}/{prefix}_accuracy_curves.png")
+    plt.close()
+
+    # Plot del MSE
+    plt.figure(figsize=(10, 5))
+    plt.plot(epochs, metrics["train_mse"], label="Train MSE")
+    plt.plot(epochs, metrics["val_mse"], label="Validation MSE", linestyle="--")
+    plt.title(f"MSE Curves ({prefix})")
+    plt.xlabel("Iterations")
+    plt.ylabel("MSE")
+    plt.legend()
+    plt.grid()
+    plt.savefig(f"{result_dir}/{prefix}_mse_curves.png")
+    plt.close()

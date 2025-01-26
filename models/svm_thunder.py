@@ -5,21 +5,6 @@ import numpy as np
 
 
 def train_single_fold_thunder(X_train, y_train, X_val, y_val, kernel='rbf', C=1.0, gamma=None):
-    """
-    Addestra ThunderSVM su un singolo fold e calcola le metriche.
-
-    Args:
-        X_train (np.ndarray): Dati di training.
-        y_train (np.ndarray): Target di training.
-        X_val (np.ndarray): Dati di validazione.
-        y_val (np.ndarray): Target di validazione.
-        kernel (str): Tipo di kernel (es. 'linear', 'rbf', 'poly', 'sigmoid').
-        C (float): Parametro di regolarizzazione.
-        gamma (str): Coefficiente gamma per i kernel non lineari.
-
-    Returns:
-        dict: Metriche di accuratezza e perdita per il fold.
-    """
     if gamma is None or isinstance(gamma, str):
         gamma = 1 / (X_train.shape[1] * np.var(X_train))  # Simile a 'scale' in scikit-learn
 
@@ -55,22 +40,6 @@ def train_single_fold_thunder(X_train, y_train, X_val, y_val, kernel='rbf', C=1.
 
 
 def k_fold_cross_validation_thunder(X, y, k=5, kernel='rbf', C=1.0, gamma='scale'):
-    """
-    Esegue la K-Fold Cross-Validation con ThunderSVM e raccoglie i dati per la curva di apprendimento.
-
-    Args:
-        X (np.ndarray): Dati di input.
-        y (np.ndarray): Target.
-        k (int): Numero di fold.
-        kernel (str): Tipo di kernel (es. 'linear', 'rbf', 'poly', 'sigmoid').
-        C (float): Parametro di regolarizzazione.
-        gamma (str): Coefficiente gamma per i kernel non lineari.
-
-    Returns:
-        list: Lista di metriche per ogni fold.
-        dict: Metriche globali (media su tutti i fold).
-        dict: Dati per la curva di apprendimento.
-    """
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
     fold_metrics = []
     train_sizes = []

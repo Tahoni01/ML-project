@@ -7,9 +7,6 @@ from sklearn.model_selection import KFold
 
 # Definizione del modello
 def initialize_params(input_size, hidden_size, output_size):
-    """
-    Inizializza i pesi e i bias del modello.
-    """
     key = jax.random.PRNGKey(0)
     w1 = jax.random.normal(key, shape=(input_size, hidden_size))
     b1 = jnp.zeros(hidden_size)
@@ -19,9 +16,6 @@ def initialize_params(input_size, hidden_size, output_size):
 
 
 def forward(params, x):
-    """
-    Propagazione in avanti.
-    """
     z1 = jnp.dot(x, params["w1"]) + params["b1"]
     h1 = jax.nn.relu(z1)
     z2 = jnp.dot(h1, params["w2"]) + params["b2"]
@@ -29,27 +23,18 @@ def forward(params, x):
 
 
 def binary_cross_entropy_loss(params, x, y):
-    """
-    Calcola la perdita Binary Cross-Entropy.
-    """
     preds = forward(params, x)
     preds = jnp.clip(preds, 1e-7, 1 - 1e-7)  # Evita problemi numerici
     return -jnp.mean(y * jnp.log(preds) + (1 - y) * jnp.log(1 - preds))
 
 
 def accuracy(params, x, y):
-    """
-    Calcola l'accuratezza.
-    """
     preds = forward(params, x)
     return jnp.mean((preds >= 0.5) == y)
 
 
 # Funzione per addestrare su un singolo fold
 def train_single_fold(X_train, y_train, X_val, y_val, input_size, hidden_size, epochs=50, lr=0.001):
-    """
-    Addestra il modello JAX su un singolo fold.
-    """
     params = initialize_params(input_size, hidden_size, 1)
     grad_loss = grad(binary_cross_entropy_loss)  # Calcola il gradiente della perdita
     history = {"train_loss": [], "val_loss": [], "train_accuracy": [], "val_accuracy": []}
@@ -76,9 +61,6 @@ def train_single_fold(X_train, y_train, X_val, y_val, input_size, hidden_size, e
 
 # Funzione per K-Fold Cross-Validation
 def k_fold_cross_validation(X, y, input_size, hidden_size, k=5, epochs=50, lr=0.001):
-    """
-    Esegue la K-Fold Cross-Validation utilizzando JAX.
-    """
     kf = KFold(n_splits=k, shuffle=True, random_state=42)
     fold_histories = []
 

@@ -8,3 +8,4 @@ pip install scikit-learn
 pip install matplotlib
 pip install thundersvm
 pip install thundersvm-cpu
+pip install bayesian-optimization
