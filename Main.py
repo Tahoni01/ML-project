@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
 from preprocess import load_all_monks, load_monk_data
 from models.nn_pytorch import optimize_hyperparameters,final_evaluation
-from models.svm_scikit_learn import grid_search_cv_svm
+from models.svm_scikit_learn import svm_execution
 import os
 import numpy as np
 
@@ -133,7 +133,6 @@ def main():
     result_dir = "results/"
     os.makedirs(result_dir, exist_ok=True)
 
-
     # Parametri per le reti neurali
     nn_param_bounds = {
         "hidden_size": (16, 100),
@@ -143,14 +142,6 @@ def main():
     nn_epochs = 500
     nn_k = 5
     device = "cpu"
-    """
-    # Parametri per SVM
-    param_grid = {
-        "C": [0.1, 1, 10],
-        "gamma": [0.01, 0.1, 1]
-    }
-    svm_k = 5
-    """
 
     # Itera su tutti i dataset Monk
     for dataset in datasets:
@@ -164,18 +155,19 @@ def main():
 
         input_size = x.shape[1]
 
+        """
         # Analisi con reti neurali
         print(f"-> Ottimizzazione NN per il dataset {dataset}")
         nn_model, nn_best_params, nn_best_val_accuracy = optimize_hyperparameters(
             x, y, input_size, nn_param_bounds, nn_epochs, nn_k, device, dataset_name=dataset
         )
         final_evaluation(nn_model, x, y, z, w, device, dataset_name=f"{dataset}_NN")
-
         """
+
         # Analisi con SVM
         print(f"-> Ottimizzazione SVM per il dataset {dataset}")
-        best_params, best_score = grid_search_cv_svm(x, y, param_grid, k=5)
-        """
+        svm_execution(x,y,z,w)
+
 
     print("\nAnalisi completata per tutti i dataset Monk!")
 

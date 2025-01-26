@@ -1,147 +1,84 @@
+from sklearn.metrics import accuracy_score, mean_squared_error
+from sklearn.model_selection import train_test_split, learning_curve, StratifiedKFold
+from sklearn.svm import SVC, SVR
+from sklearn.model_selection import GridSearchCV
 import numpy as np
-from sklearn.svm import SVC
-from sklearn.model_selection import KFold, GridSearchCV
-from sklearn.metrics import accuracy_score, log_loss
-from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 import os
 
-# Funzione per l'addestramento del modello SVM
-def train_svm(x_train, y_train, x_val, y_val, kernel, C, gamma):
-    scaler = StandardScaler()
-    x_train_scaled = scaler.fit_transform(x_train)
-    x_val_scaled = scaler.transform(x_val)
 
-    model = SVC(kernel=kernel, C=C, gamma=gamma, probability=True, random_state=42)
-    model.fit(x_train_scaled, y_train)
-
-    train_probs = model.predict_proba(x_train_scaled)
-    val_probs = model.predict_proba(x_val_scaled)
-
-    train_preds = model.predict(x_train_scaled)
-    val_preds = model.predict(x_val_scaled)
-
-    train_loss = log_loss(y_train, train_probs)
-    val_loss = log_loss(y_val, val_probs)
-
-    train_accuracy = accuracy_score(y_train, train_preds)
-    val_accuracy = accuracy_score(y_val, val_preds)
-
-    train_mse = np.mean((y_train - train_preds) ** 2)
-    val_mse = np.mean((y_val - val_preds) ** 2)
-
-    return model, train_loss, val_loss, train_accuracy, val_accuracy, train_mse, val_mse
-
-# K-Fold Cross-Validation
-def k_fold_cross_validation_svm(x, y, kernel, C, gamma, k):
-    kf = KFold(n_splits=k, shuffle=True, random_state=42)
-    metrics = {
-        "train_loss": [],
-        "val_loss": [],
-        "train_accuracy": [],
-        "val_accuracy": [],
-        "train_mse": [],
-        "val_mse": []
+def optimize(x_tr,y_tr):
+    param_grid = {
+        'kernel': ['linear','rbf', 'poly', 'sigmoid'],  # Testiamo kernel rbf e poly
+        'C': [0.1, 1, 5, 10, 50, 100],  # Parametro di regolarizzazione
+        'gamma': ['scale', 'auto', 0.0001, 0.001, 0.01],  # Gamma automatico
+        'degree': [2, 3, 4, 5]  # Gradi per il kernel polinomiale
     }
+    svc = SVC(class_weight='balanced')
+    stratified_kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)  # Stratified K-Fold
+    grid_search = GridSearchCV(estimator=svc, param_grid=param_grid,cv=stratified_kfold, scoring='neg_mean_squared_error', n_jobs=-1)
+    grid_search.fit(x_tr, y_tr)
+    print("Migliori parametri trovati:")
+    print(grid_search.best_params_)
+    return grid_search.best_estimator_
 
-    for train_idx, val_idx in kf.split(x):
-        x_train, x_val = x[train_idx], x[val_idx]
-        y_train, y_val = y[train_idx], y[val_idx]
+def model_creation(p):
+    params = p.get_params()  # Ottieni i parametri dal modello SVC ottimizzato
+    model = SVC(C=params["C"], kernel=params["kernel"], degree=params["degree"], gamma=params["gamma"])
+    return model
 
-        _, train_loss, val_loss, train_accuracy, val_accuracy, train_mse, val_mse = train_svm(
-            x_train, y_train, x_val, y_val, kernel, C, gamma
-        )
+def train_model(model,x,y):
+    x_tr,x_vl,y_tr,y_vl = train_test_split(x,y,test_size=0.3, random_state=42)
+    model.fit(x_tr,y_tr)
 
-        metrics["train_loss"].append(train_loss)
-        metrics["val_loss"].append(val_loss)
-        metrics["train_accuracy"].append(train_accuracy)
-        metrics["val_accuracy"].append(val_accuracy)
-        metrics["train_mse"].append(train_mse)
-        metrics["val_mse"].append(val_mse)
+    plot_learning_curve(model, x, y)
 
-    avg_metrics = {key: np.mean(value) for key, value in metrics.items()}
+    y_pred = model.predict(x_vl)
+    accuracy = accuracy_score(y_vl, y_pred)
+    mse = mean_squared_error(y_vl, y_pred)
+    print(f"Training Accuracy: {accuracy * 100:.2f}%")
+    print(f"Training MSE: {mse:.4f}")
 
-    return avg_metrics, metrics
+def evaluation(model, x_ts, y_ts):
+    y_pred = model.predict(x_ts)
+    accuracy = accuracy_score(y_ts, y_pred)
+    mse = mean_squared_error(y_ts, y_pred)
+    print(f"Test Accuracy: {accuracy * 100:.2f}%")
+    print(f"Test MSE: {mse:.4f}")
 
-# Grid Search con scikit-learn
-def grid_search_cv_svm(x, y, param_grid, k=5):
-    scaler = StandardScaler()
-    x_scaled = scaler.fit_transform(x)
-
-    model = SVC(kernel="rbf", probability=True, random_state=42)
-
-    grid_search = GridSearchCV(
-        estimator=model,
-        param_grid=param_grid,
-        cv=k,
-        scoring="accuracy",
-        verbose=2,
-        n_jobs=-1
+def plot_learning_curve(model, x, y):
+    """Genera e plotta la learning curve basata sul MSE."""
+    train_sizes, train_scores, test_scores = learning_curve(
+        model, x, y, cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42), scoring='neg_mean_squared_error',
+        train_sizes=np.linspace(0.1, 1.0, 10), n_jobs=-1
     )
 
-    grid_search.fit(x_scaled, y)
+    # Convertire da negativo a positivo
+    train_loss_mean = -np.mean(train_scores, axis=1)
+    test_loss_mean = -np.mean(test_scores, axis=1)
 
-    best_params = grid_search.best_params_
-    best_score = grid_search.best_score_
+    mean_train_loss = -np.mean(train_scores)
+    mean_test_loss = -np.mean(test_scores)
 
-    print(f"Migliori parametri: {best_params}")
-    print(f"Accuratezza migliore: {best_score:.4f}")
+    print(f"TR loss: {mean_train_loss}")
+    print(f"TS loss: {mean_test_loss}")
 
-    # Plot dei risultati del training
-    results = grid_search.cv_results_
+    # Plot della curva
     plt.figure(figsize=(10, 6))
-    plt.plot(results['param_C'], results['mean_test_score'], marker='o', label='Mean Test Accuracy')
-    plt.xscale('log')
-    plt.xlabel('C (log scale)')
-    plt.ylabel('Mean Test Accuracy')
-    plt.title('Grid Search Results')
-    plt.legend()
-    plt.grid(True)
-
-    # Salva il grafico su file
-    os.makedirs("results", exist_ok=True)
-    plt.savefig("results/grid_search_results.png")
-    plt.close()
-
-    return best_params, best_score
-
-# Plot delle metriche
-def plot_metrics(metrics, result_dir="results", prefix="svm"):
-    os.makedirs(result_dir, exist_ok=True)
-    epochs = range(1, len(metrics["train_loss"]) + 1)
-
-    # Plot delle loss
-    plt.figure(figsize=(10, 5))
-    plt.plot(epochs, metrics["train_loss"], label="Train Loss")
-    plt.plot(epochs, metrics["val_loss"], label="Validation Loss", linestyle="--")
-    plt.title(f"Loss Curves ({prefix})")
-    plt.xlabel("Iterations")
-    plt.ylabel("Loss")
+    plt.plot(train_sizes, train_loss_mean, label="Loss (TR)", color="blue")
+    plt.plot(train_sizes, test_loss_mean, label="Loss (VL)", color="orange")
+    plt.title(f"SVR Learning Curve")
+    plt.xlabel("Training Size")
+    plt.ylabel("Mean Squared Error (MSE)")
     plt.legend()
     plt.grid()
-    plt.savefig(f"{result_dir}/{prefix}_loss_curves.png")
-    plt.close()
 
-    # Plot delle accuracy
-    plt.figure(figsize=(10, 5))
-    plt.plot(epochs, metrics["train_accuracy"], label="Train Accuracy")
-    plt.plot(epochs, metrics["val_accuracy"], label="Validation Accuracy", linestyle="--")
-    plt.title(f"Accuracy Curves ({prefix})")
-    plt.xlabel("Iterations")
-    plt.ylabel("Accuracy")
-    plt.legend()
-    plt.grid()
-    plt.savefig(f"{result_dir}/{prefix}_accuracy_curves.png")
-    plt.close()
+    os.makedirs("results", exist_ok=True)  # Crea la directory se non esiste
+    plt.savefig("results/learning_curve.png")
+    plt.close()  # Chiude il grafico
 
-    # Plot del MSE
-    plt.figure(figsize=(10, 5))
-    plt.plot(epochs, metrics["train_mse"], label="Train MSE")
-    plt.plot(epochs, metrics["val_mse"], label="Validation MSE", linestyle="--")
-    plt.title(f"MSE Curves ({prefix})")
-    plt.xlabel("Iterations")
-    plt.ylabel("MSE")
-    plt.legend()
-    plt.grid()
-    plt.savefig(f"{result_dir}/{prefix}_mse_curves.png")
-    plt.close()
+def svm_execution(x_tr, y_tr, x_ts, y_ts):
+    p = optimize(x_tr,y_tr)
+    model = model_creation(p)
+    train_model(model,x_tr,y_tr)
+    evaluation(model, x_ts, y_ts)
