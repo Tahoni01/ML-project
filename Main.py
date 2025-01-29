@@ -2,77 +2,65 @@ from preprocess import load_all_monks, load_cup_data
 from models.svm_scikit_learn import svm_execution, plot_results_svm
 from models.nn_pytorch import nn_execution, plot_results_nn
 import os
-from concurrent.futures import ThreadPoolExecutor
 
 def main():
     print("Caricamento dei dati...")
 
     # Path ai dataset
     base_path_monk = "data/monk/"
+
     cup_train_path = "data/cup/ML-CUP24-TR.csv"
     cup_test_path = "data/cup/ML-CUP24-TS.csv"
 
-    # Caricamento dei dataset MONK
-    monk_datasets = load_all_monks(base_path_monk)
-    # Caricamento dei dati CUP
+    monk_datasets, encoders, scalers = load_all_monks(base_path_monk)
     cup_data = load_cup_data(cup_train_path, cup_test_path)
 
-    # Creazione della directory per i risultati
     result_dir = "results/"
     os.makedirs(result_dir, exist_ok=True)
 
-    # Esecuzione parallela di analisi
-    with ThreadPoolExecutor() as executor:
-        futures = []
+    model_input = input("Type the model you want to use: ")
+    dataset_input = input("Type the dataset you want to use: ")
 
-        # Analisi per i dataset MONK
-        for dataset_name, data in monk_datasets.items():
-            print(f"\n--- Analisi del dataset MONK: {dataset_name} ---")
+    if model_input == "scikit":
+        if dataset_input == "cup":
+            print(f"--- Analyzing {dataset_input} ---")
 
-            # Training e test set
-            X_train, Y_train = data["train"]["torch"]
-            X_test, Y_test = data["test"]["torch"]
-            input_size = X_train.shape[1]
-            """
-            # Analisi SVM
-            futures.append(
-                executor.submit(svm_execution, X_train, Y_train, X_test, Y_test, dataset_name, "classification")
-            )
-            """
+            x_tr, y_tr = cup_data["train"]["numpy"]
+            x_ts = cup_data["test"]["numpy"]
 
-            # Analisi PyTorch
-            futures.append(
-                executor.submit(nn_execution, X_train, Y_train, X_test, Y_test, input_size, 1, dataset_name)
-            )
+            svm_execution(x_tr, y_tr, x_ts, None, "cup", "regression")
+            plot_results_svm("regression")
+        elif dataset_input == "monk":
+            for dataset_name, data in monk_datasets.items():
+                print(f"--- Analyzing {dataset_name} --- ")
 
-        """
-        # Analisi per il dataset CUP
-        print("\n--- Analisi del dataset CUP ---")
-        X_train_cup, Y_train_cup = cup_data["train"]["numpy"]
-        X_test_cup, Y_test_cup = cup_data["test"]["numpy"]
-        input_size_cup = X_train_cup.shape[1]
+                x_tr, y_tr = data["train"]["numpy"]
+                x_ts, y_ts = data["test"]["numpy"]
 
-        # Analisi SVM per CUP
-        futures.append(
-            executor.submit(svm_execution, X_train_cup, Y_train_cup, X_train_cup, Y_train_cup, "CUP", "regression")
-        )
+                svm_execution(x_tr,y_tr,x_ts,y_ts,dataset_name,"classification")
+            plot_results_svm("classification")
+    elif model_input == "pytorch":
+        if dataset_input == "cup":
+            print(f"--- Analyzing {dataset_input} ---")
 
-        
-        # Analisi PyTorch per CUP
-        futures.append(
-            executor.submit(nn_execution, X_train_cup, Y_train_cup, X_test_cup, Y_test_cup, input_size_cup, 3, "CUP")
-        )
-        """
+            x_tr, y_tr = cup_data["train"]["torch"]
+            x_ts = cup_data["test"]["torch"]
 
-        # Attendi il completamento di tutti i task
-        for future in futures:
-            future.result()
+            nn_execution(x_tr,y_tr,x_ts,None,dataset_input,"regression")
+            plot_results_nn("regression")
+        elif dataset_input == "monk":
+            for dataset_name, data in monk_datasets.items():
+                print(f"--- Analyzing {dataset_name} --- ")
 
-    # Genera i plot dei risultati
-    plot_results_svm()
-    # plot_results_nn()
+                x_tr, y_tr = data["train"]["torch"]
+                x_ts, y_ts = data["test"]["torch"]
 
-    print("\nAnalisi completata per tutti i dataset!")\
+                nn_execution(x_tr, y_tr, x_ts, y_ts,dataset_name,"classification")
+            plot_results_nn("classification")
+
+    print("\nAnalisi completata!")
 
 if __name__ == "__main__":
     main()
+
+
