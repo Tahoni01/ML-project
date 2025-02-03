@@ -1,22 +1,35 @@
 ML Project 2024
-Authors: Riccardo La Rosa, Sean Campailla and coordinated by prof. Alessio Micheli from University of Pisa.
+Authors
+Riccardo La Rosa, Sean Campailla
+Supervised by Prof. Alessio Micheli – University of Pisa
 
-The project
-We had 4 tasks with a Dataset for each one:
+Project Overview
+This project focuses on Machine Learning by tackling four different tasks, each with its own dataset:
 
-3 of them were Binary Classification problems, as boolean expressions (Monks datasets),
-1 of them was a Regression problem (CUP dataset).
-
+3 Binary Classification Problems: Solving Boolean expressions using the Monks datasets.
+1 Regression Problem: Addressing a regression task with the CUP dataset.
 Implementation
-We’ve compared one Neural Networks in Pytorch library and one SVM using Scikit-Learn library, to see differences both on models and tools.
+We implemented and compared two different machine learning approaches:
 
-For an effective comparison, we used the specific provided functions of each library without mixing them, when possible. We made Model Selection and Model Assessment by using Grid-Search for SVM and Random Search for Pytorch, and both K-fold Cross-Validation before testing all models, on an Internal Test set for CUP, and on the given Test set  files (for Monks).
+Neural Networks using PyTorch
+Support Vector Machines (SVMs) using Scikit-Learn
+The goal was to analyze differences both in model performance and in the tools used.
 
-Regression problem (CUP)
-The selected model for the CUP is made with both Pytorch and SVM. We focused on various levels of abstraction, flexibility and customizability offered by the different tools we investigated.
+To ensure a fair and effective comparison, we:
+✔ Used the specific built-in functions of each library, avoiding unnecessary mixing.
+✔ Applied Grid Search (SVM) and Random Search (PyTorch) for hyperparameter tuning.
+✔ Conducted K-Fold Cross-Validation before testing the models.
+✔ Evaluated performance on:
 
-Why we have chosen these frameworks?
-Regarding the Neural Networks, we utilized:
--PyTorch for its greater flexibility, customizability and makes you see the various stages of a neural network in real time. 
-Furthermore, regaring SVM's models, we used:
--Sklearn for its semplicity and fast processing campability
+An internal test set for the CUP dataset.
+The provided test files for the Monks datasets.
+Regression Task (CUP Dataset)
+For the CUP dataset, we implemented models using both PyTorch and SVM.
+The study focused on different levels of abstraction, flexibility, and customizability offered by these tools.
+
+Why These Frameworks?
+🔹 Neural Networks (PyTorch)
+Chosen for its flexibility, customizability, and real-time visualization of neural network operations.
+🔹 Support Vector Machines (Scikit-Learn)
+Selected for its simplicity and fast processing capabilities, making it an ideal tool for quick experimentation.
+
