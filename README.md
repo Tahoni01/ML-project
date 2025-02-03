@@ -1,82 +1,93 @@
-🚀 ML Project 2024
+# ML Project 2024
+## Authors
+- Riccardo La Rosa 
+- Sean Campailla 
 
-👨‍💻 Authors
 
-Riccardo La Rosa
+## 📌 Project Overview
 
-Sean Campailla📌 Supervised by Prof. Alessio Micheli – University of Pisa
+We had 4 tasks with a Dataset for each one:
 
-📌 Project Overview
-
-This project focuses on Machine Learning by tackling four different tasks, each with its own dataset:
-
-🔹 3 Binary Classification Problems – Boolean expressions using the Monks datasets.🔹 1 Regression Problem – Addressing a complex regression task with the CUP dataset.
-
-⚙️ Implementation
-
+- 3 of them were Binary Classification problems, as boolean expressions (Monks datasets),
+- 1 of them was a Regression problem (CUP dataset).
+## ⚙️ Implementation
 We implemented and compared two different machine learning approaches:
 
-🔹 Neural Networks using 🧠 PyTorch🔹 Support Vector Machines (SVMs) using ⚡ Scikit-Learn
+🔹 Neural Networks using  PyTorch
 
-🔎 Evaluation & Model Selection
+🔹 Support Vector Machines (SVMs) using Scikit-Learn
 
-To ensure a fair and effective comparison, we applied:✔ Hyperparameter Optimization:
 
-Grid Search (SVM)
+## 🔎 Evaluation & Model Selection
+To ensure a fair and effective comparison, we applied:
 
-Random Search (PyTorch)✔ K-Fold Cross-Validation for reliable performance assessment.✔ Model Testing on:
+✔ Hyperparameter Optimization:
+- Grid Search (SVM)
+- Random Search (PyTorch)
 
-An internal test set (CUP dataset).
+✔ K-Fold Cross-Validation for reliable performance assessment.
 
-The provided test files (Monks datasets).
+✔ Model Testing on:
+- An internal test set (CUP dataset).
+- The provided test files (Monks datasets).
+## 📊 Regression Task (CUP Dataset)
 
-📊 Regression Task (CUP Dataset)
+For the CUP dataset, we implemented models using both PyTorch and SVM.
+Our study focused on the different levels of abstraction, flexibility, and customizability offered by these tools.
 
-For the CUP dataset, we implemented models using both PyTorch and SVM.Our study focused on the different levels of abstraction, flexibility, and customizability offered by these tools.
+## ❓ Why These Frameworks?
+### 🧠 Neural Networks with PyTorch:
+✅ High flexibility & customizability.
 
-❓ Why These Frameworks?
+✅ Provides real-time insights into each stage of a neural network.
 
-🧠 Neural Networks with PyTorch
+### ⚡ Support Vector Machines with Scikit-Learn
+✅ Extremely fast and easy to use.
 
-✅ High flexibility & customizability.✅ Provides real-time insights into each stage of a neural network.✅ Ideal for complex deep learning architectures.
+✅ Well-optimized for small to medium-sized datasets.
 
-⚡ Support Vector Machines with Scikit-Learn
+✅ Great for quick experimentation and benchmarking.
 
-✅ Extremely fast and easy to use.✅ Well-optimized for small to medium-sized datasets.✅ Great for quick experimentation and benchmarking.
 
-📂 Repository Structure
 
+## 📂 Repository Structure
 📂 ML-Project-2024/
+
 │── 📁 data/             # Contains dataset files (Monks & CUP)
+
 │── 📁 models/           # Implementations of NN (PyTorch) & SVM (Scikit-Learn)
+
 │── 📁 results/          # Training logs, plots, and final outputs
+
 │── 📜 preprocess.py     # Data loading & preprocessing functions
+
 │── 📜 main.py           # Main script to execute experiments
+
 │── 📜 README.md         # Project documentation (this file)
 
-🚀 How to Run the Code
+│── 📜 requirement.txt   # Project requirement library
 
+## 🚀 How to Run the Code
 1️⃣ Clone the Repository
 
+```bash
 git clone https://github.com/yourusername/ML-Project-2024.git
 cd ML-Project-2024
-
+```
 2️⃣ Install Dependencies
-
+```bash
 pip install -r requirements.txt
-
+```
 3️⃣ Run the Main Script
-
+```bash
 python main.py
+```
+## 📈 Results
+Results from classification models (Monks datasets) and regression models (CUP dataset) are available in the results/ folder.
 
-📌 Results & Insights
+Learning curves and model comparisons can be visualized using the provided plotting functions.
 
-🔹 Results from classification models (Monks datasets) and regression models (CUP dataset) are available in the results/ folder.🔹 Learning curves and model comparisons can be visualized using the provided plotting functions.
+📩 Contact: r.larosa3@studenti.unipi.it | s.Campailla1@studenti.unipi.it 
 
-📈 For detailed performance analysis, check the Jupyter Notebook (coming soon!)
+🌍 University of Pisa
 
-📧 Contact & Contributions
-
-For any questions or contributions, feel free to open an issue or submit a pull request!
-
-📩 Contact: riccardo.la.rosa@email.com | sean.campailla@email.com🌍 University of Pisa
