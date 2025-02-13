@@ -87,7 +87,7 @@ Results from classification models (Monks datasets) and regression models (CUP d
 
 Learning curves and model comparisons can be visualized using the provided plotting functions.
 
-📩 Contact: r.larosa3@studenti.unipi.it | s.Campailla1@studenti.unipi.it 
+📩 Contact: r.larosa3@studenti.unipi.it | s.campailla1@studenti.unipi.it 
 
 🌍 University of Pisa
 
